@@ -1,7 +1,9 @@
 require("dotenv").config();
 const express = require("express");
+const bcrypt = require("bcrypt");
 const connectDB = require("./config/database");
 const User = require("./models/user");
+const { validateSignupData } = require("./utils/validation");
 
 const app = express();
 
@@ -9,13 +11,44 @@ app.use(express.json());
 
 app.post("/signup", async (req, res) => {
   try {
+    // validate the data
+    validateSignupData(req);
+    const { firstName, lastName, emailId, password } = req.body;
+    // hash the password
+    // const {password} = req.body
+    const passwordHash = await bcrypt.hash(password, 10);
     // creating a new instance of the user models
-    const user = new User(req.body);
+    const user = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: passwordHash,
+    });
     await user.save();
 
     res.send("User created successfully");
   } catch (err) {
     res.status(400).send("Error saving the user:" + err.message);
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
+    const user = await User.findOne({ emailId: emailId });
+
+    if (!user) {
+      throw new Error("Invalid cradential");
+    }
+
+    const isValidate = await bcrypt.compare(password, user.password);
+    if (isValidate) {
+      res.send("Login successfull");
+    } else {
+      throw new Error("Invalid cradential");
+    }
+  } catch (error) {
+    res.status(400).send("Error saving the user:" + error.message);
   }
 });
 
