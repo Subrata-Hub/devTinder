@@ -32,4 +32,17 @@ const validateEditProfileData = (req) => {
   return isEditAllowed;
 };
 
-module.exports = { validateSignupData, validateEditProfileData };
+const validateProfilePasswordData = (req) => {
+  const allowedEditFields = ["password"];
+
+  const isEditAllowed = Object.keys(req.body).every((field) =>
+    allowedEditFields.includes(field)
+  );
+  return isEditAllowed;
+};
+
+module.exports = {
+  validateSignupData,
+  validateEditProfileData,
+  validateProfilePasswordData,
+};
