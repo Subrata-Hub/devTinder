@@ -1,13 +1,20 @@
 require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
 const User = require("./models/user");
 const { validateSignupData } = require("./utils/validation");
+const { userauth } = require("./middleware/auth");
 
 const app = express();
 
+// express.json() is a middleware it convert json in request body to the javascripts object
 app.use(express.json());
+
+// cookie parder middleware
+app.use(cookieParser());
 
 app.post("/signup", async (req, res) => {
   try {
@@ -41,8 +48,23 @@ app.post("/login", async (req, res) => {
       throw new Error("Invalid cradential");
     }
 
-    const isValidate = await bcrypt.compare(password, user.password);
-    if (isValidate) {
+    // const isPasswordValidate = await bcrypt.compare(password, user.password);
+
+    // offload isPasswordValidate logic into mongo schema method
+    const isPasswordValidate = await user.validatePassword(password);
+    if (isPasswordValidate) {
+      // create JWT Token
+      // const token = await jwt.sign({ _id: user._id }, "subrata$123@321", {
+      //   expiresIn: "7d",
+      // });
+
+      // Offload this logic into mongo schema method
+
+      const token = await user.getJWT();
+      // Add the token to the cookie and send the responce back to the user
+      res.cookie("token", token, {
+        expires: new Date(Date.now() + 100 * 3600000),
+      });
       res.send("Login successfull");
     } else {
       throw new Error("Invalid cradential");
@@ -52,74 +74,19 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Get user by email
-
-app.get("/user", async (req, res) => {
+app.get("/profile", userauth, async (req, res) => {
   try {
-    const useremailId = req.body.emailId;
-    const user = await User.findOne({ emailId: useremailId });
-
-    if (!user) {
-      res.status(404).send("User not found");
-    } else {
-      res.send(user);
-    }
+    const user = req.user;
+    res.send(user);
   } catch (error) {
-    res.status(400).send("Something went wrong");
+    res.status(400).send("Error saving the user:" + error.message);
   }
 });
 
-// Update user data off the user
+app.post("/sentConnectionRequest", userauth, (req, res) => {
+  const user = req.user;
 
-app.patch("/user/:userId", async (req, res) => {
-  const userId = req.params?.userId;
-  const data = req.body;
-
-  try {
-    const ALLOWED_UPDATE = ["photoUrl", "about", "gender", "skills", "age"];
-
-    const isUpdateAllowed = Object.keys(data).every((k) =>
-      ALLOWED_UPDATE.includes(k)
-    );
-
-    if (!isUpdateAllowed) {
-      throw new Error("Update not allowed");
-      // res.status(400).send("Update not allowed")
-    }
-
-    if (data?.skills.length > 10) {
-      throw new Error("Skill can not be more than 10");
-    }
-    await User.findByIdAndUpdate({ _id: userId }, data, {
-      returnDocument: "after",
-      runValidators: true,
-    });
-    res.send("User updated successfully");
-  } catch (error) {
-    res.status(400).send("Update failed:" + error.message);
-  }
-});
-
-// Delete api - DELETE/user - Delete user
-
-app.delete("/user", async (req, res) => {
-  const userId = req.body.userId;
-  try {
-    const user = await User.findByIdAndDelete(userId);
-    res.send("User deleted successfully");
-  } catch (error) {
-    res.status(400).send("Something went wrong");
-  }
-});
-
-// Feed api - GET/feed - get all the user from DB
-app.get("/feed", async (req, res) => {
-  try {
-    const users = await User.find({});
-    res.send(users);
-  } catch (error) {
-    res.status(400).send("Something went wrong");
-  }
+  res.send(user.firstName + "sent conection request");
 });
 
 connectDB()
