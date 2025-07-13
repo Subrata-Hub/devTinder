@@ -2,6 +2,7 @@ const express = require("express");
 const { userauth } = require("../middleware/auth");
 
 const ConnectionRequest = require("../models/connectionRequest");
+const User = require("../models/user");
 
 const userRouter = express.Router();
 
@@ -37,11 +38,46 @@ userRouter.get("/user/connections", userauth, async (req, res) => {
         { toUserId: logedinUser._id, status: "accepted" },
         { fromUserId: logedinUser._id, status: "accepted" },
       ],
-    }).populate("fromUserId", USER_SAFE_DATA);
+    })
+      .populate("fromUserId", USER_SAFE_DATA)
+      .populate("toUserId", USER_SAFE_DATA);
 
-    const data = userConnections.map((doc) => doc.fromUserId);
+    const data = userConnections.map((doc) => {
+      if (doc.fromUserId._id.toString() === logedinUser._id.toString()) {
+        return doc.toUserId;
+      }
+      return doc.fromUserId;
+    });
 
     res.json({ data });
+  } catch (error) {
+    res.status(400).send("ERROR:" + error.message);
+  }
+});
+
+userRouter.get("/feed", userauth, async (req, res) => {
+  try {
+    const logedinUser = req.user;
+
+    const connectionRequests = await ConnectionRequest.find({
+      $or: [{ fromUserId: logedinUser._id }, { toUserId: logedinUser._id }],
+    }).select("fromUserId toUserId");
+
+    const hideUserFromFeed = new Set();
+
+    connectionRequests.forEach((req) => {
+      hideUserFromFeed.add(req.fromUserId.toString());
+      hideUserFromFeed.add(req.toUserId.toString());
+    });
+
+    const users = await User.find({
+      $and: [
+        { _id: { $nin: Array.from(hideUserFromFeed) } },
+        { _id: { $ne: logedinUser._id } },
+      ],
+    }).select(USER_SAFE_DATA);
+
+    res.send(users);
   } catch (error) {
     res.status(400).send("ERROR:" + error.message);
   }
