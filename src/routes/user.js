@@ -76,6 +76,15 @@ userRouter.get("/feed", userauth, async (req, res) => {
       hideUserFromFeed.add(req.toUserId.toString());
     });
 
+    const toTalUsers = await User.countDocuments({
+      $and: [
+        { _id: { $nin: Array.from(hideUserFromFeed) } },
+        { _id: { $ne: logedinUser._id } },
+      ],
+    });
+
+    let totalUserToShowingUserFeed = 0;
+
     const users = await User.find({
       $and: [
         { _id: { $nin: Array.from(hideUserFromFeed) } },
@@ -86,7 +95,12 @@ userRouter.get("/feed", userauth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.send(users);
+    totalUserToShowingUserFeed = totalUserToShowingUserFeed + users?.length;
+
+    const availableUserToShowingUserFeed =
+      toTalUsers - totalUserToShowingUserFeed;
+
+    res.send({ availableUsers: availableUserToShowingUserFeed, users });
   } catch (error) {
     res.status(400).send("ERROR:" + error.message);
   }
