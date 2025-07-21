@@ -14,6 +14,8 @@ const USER_SAFE_DATA = [
   "gender",
   "skills",
   "about",
+  "city",
+  "location",
 ];
 
 userRouter.get("/user/requests/received", userauth, async (req, res) => {
@@ -76,14 +78,14 @@ userRouter.get("/feed", userauth, async (req, res) => {
       hideUserFromFeed.add(req.toUserId.toString());
     });
 
+    let totalUserToShowingUserFeed = 0;
+
     const toTalUsers = await User.countDocuments({
       $and: [
         { _id: { $nin: Array.from(hideUserFromFeed) } },
         { _id: { $ne: logedinUser._id } },
       ],
     });
-
-    let totalUserToShowingUserFeed = 0;
 
     const users = await User.find({
       $and: [

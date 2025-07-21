@@ -67,6 +67,44 @@ const userSchema = new mongoose.Schema(
     skills: {
       type: [String],
     },
+
+    location: {
+      type: String,
+    },
+
+    city: {
+      type: String,
+    },
+
+    phoneNumber: {
+      type: String,
+      minLength: [10, "Phone number should have a minimum of 10 digits"],
+      maxLength: [10, "Phone number should have a maximum of 10 digits"],
+      match: [/^\d{10}$/, "Phone number should only contain digits"],
+    },
+
+    alternativeEmail: {
+      type: String,
+      lowercase: true,
+      unique: true,
+      trim: true,
+      validate(value) {
+        if (!validator.isEmail(value)) {
+          throw new Error("Invalid email address: " + value);
+        }
+      },
+    },
+    brithday: {
+      type: String,
+      validate(value) {
+        if (!validator.isDate(value)) {
+          throw new Error("Invalid date: " + value);
+        }
+      },
+    },
+    hobbies: {
+      type: [String],
+    },
   },
   {
     timestamps: true,

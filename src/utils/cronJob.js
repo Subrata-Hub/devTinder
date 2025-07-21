@@ -25,8 +25,6 @@ cron.schedule("4 56 * * * *", async () => {
       ...new Set(pendingRequest.map((req) => req.toUserId.emailId)),
     ];
 
-    console.log(listOffEmail);
-
     for (const email of listOffEmail) {
       try {
         const message = `There are so many friend request pending pleasr login to portal`;
