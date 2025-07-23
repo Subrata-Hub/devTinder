@@ -86,7 +86,7 @@ const userSchema = new mongoose.Schema(
     alternativeEmail: {
       type: String,
       lowercase: true,
-      unique: true,
+      // unique: true,
       trim: true,
       validate(value) {
         if (!validator.isEmail(value)) {
