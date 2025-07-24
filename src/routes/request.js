@@ -25,8 +25,6 @@ requestRouter.post(
 
       const toUser = await User.findById(toUserId);
 
-      console.log(toUser);
-
       if (!toUser) {
         return res.status(404).json({
           message: "User not found",
@@ -53,31 +51,6 @@ requestRouter.post(
       });
 
       const data = await connectionRequest.save();
-
-      // console.log(data);
-
-      // const message = `<strong>${req.user.firstName} is ${status} in ${toUser.firstName}</strong>`;
-      // const message = `<div>
-      //   <div class="">
-      //     <h1>tindervibe</h1>
-      //     <div>
-      //       <img src=${toUser.photoUrl}/>
-      //     </div>
-      //   </div>
-      //   <div>
-      //     <img src=${req.user.photoUrl}/>
-      //     <h2>${req.user.firstName}</h2>
-      //   </div>
-      //   <div>
-      //     <button>
-      //       <a>Accept</a>
-      //     </button>
-      //      <button>
-      //       <a>View Profile</a>
-      //      </button>
-
-      //   </div>
-      // </div>`;
 
       const message = `<div style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif;">
         <table border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -192,8 +165,6 @@ requestRouter.post(
         status: "interested",
       });
 
-      // console.log(connectionRequest);
-
       if (!connectionRequest) {
         return res
           .status(404)
@@ -217,16 +188,23 @@ requestRouter.post(
             <td style="padding: 20px 0;">
                 <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #cccccc; border-radius: 8px; overflow: hidden;">
 
-                  <tr style="display: flex; justify-content: space-between">
-                        <td align="center" style="padding: 20px 0 20px 0 ">
-                        <h1 style="font-size: 20px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                              tindervibe
-                            </h1>
-                            <img src="${userToSentEmail.photoUrl}" alt="Your Photo" width="70" height="70" style="display: block; border-radius: 50%; margin: 0 auto;/>
-                        
-                            
-                        </td>
-                    </tr>
+                 <tr>
+    <td>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+                <td align="left" style="padding: 20px 0 20px 30px;">
+                    <h1 style="font-size: 20px; margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                        tindervibe
+                    </h1>
+                </td>
+
+                <td align="right" style="padding: 20px 30px 20px 0;">
+                    <img src="${userToSentEmail?.photoUrl}" alt="Your Photo" width="70" height="70" style="display: block; border-radius: 50%;"/>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
                     
                     <tr>
                         <td align="center" style="padding: 20px 0 20px 0;">
@@ -275,10 +253,6 @@ requestRouter.post(
         `;
         await sendMail(userToSentEmail?.emailId, message, subject);
       }
-
-      // console.log(data);
-
-      //  const message = `<strong>connection request ${status} </strong>`;
 
       res.json({ message: `connection request ${status}`, data });
     } catch (error) {

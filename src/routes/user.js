@@ -135,7 +135,6 @@ userRouter.get("/feed", userauth, async (req, res) => {
     // If the specific query finds no one (and it's the first page),
     // run a broader, fallback query.
     if (users.length === 0 && page === 1) {
-      console.log("No specific matches found. Using fallback query.");
       // The fallback query just uses the base filters (age, gender, etc.)
       const fallbackQuery = baseFilters;
 

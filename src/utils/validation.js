@@ -38,8 +38,28 @@ const validateEditProfileData = (req) => {
   return isEditAllowed;
 };
 
+const validateOnlyUserEmailField = (req) => {
+  const allowedEmailField = ["emailId"];
+
+  const isEmailAllowed = Object.keys(req.body).every((field) =>
+    allowedEmailField.includes(field)
+  );
+
+  return isEmailAllowed;
+};
+
+const validateUserEmailField = (req) => {
+  const allowedEmailField = ["emailId", "code", "password"];
+
+  const isEmailAllowed = Object.keys(req.body).every((field) =>
+    allowedEmailField.includes(field)
+  );
+
+  return isEmailAllowed;
+};
+
 const validateProfilePasswordData = (req) => {
-  const allowedEditFields = ["password"];
+  const allowedEditFields = ["password", "emailId"];
 
   const isEditAllowed = Object.keys(req.body).every((field) =>
     allowedEditFields.includes(field)
@@ -51,4 +71,6 @@ module.exports = {
   validateSignupData,
   validateEditProfileData,
   validateProfilePasswordData,
+  validateUserEmailField,
+  validateOnlyUserEmailField,
 };

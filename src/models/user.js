@@ -105,7 +105,15 @@ const userSchema = new mongoose.Schema(
     hobbies: {
       type: [String],
     },
+
+    passwordResetCode: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
   },
+
   {
     timestamps: true,
   }
