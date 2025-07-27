@@ -139,7 +139,7 @@ paymentRouter.post("/payment/create", userauth, async (req, res) => {
       },
     });
 
-    console.log(response.data);
+    // console.log(response.data);
 
     const payment = new Payment({
       userId: user._id,
@@ -206,6 +206,7 @@ paymentRouter.post("/payment/capture", userauth, async (req, res) => {
 
 paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
   try {
+    console.log("Received webhook:", webhookEvent.event_type);
     const accessToken = await generateAccessToken();
     const verifyResponse = await axios.post(
       "https://api.paypal.com/v1/notifications/verify-webhook-signature",
@@ -236,9 +237,11 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
     const resource = webhookEvent.resource;
 
     if (webhookEvent.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-      const orderId =
-        resource.supplementary_data?.related_resources[0]?.order?.id ||
-        resource.custom_id; // Get order ID
+      // const orderId =
+      // resource.supplementary_data?.related_resources[0]?.order?.id ||
+      // resource.custom_id; // Get order ID
+
+      const orderId = resource.supplementary_data?.related_ids?.order_id;
       const status = resource.status; // e.g., "COMPLETED"
       const amount = resource.amount.value;
       const currency = resource.amount.currency_code;
@@ -255,6 +258,8 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
         },
         { new: true, upsert: false } // new: true returns the updated document
       );
+
+      console.log(updatedPayment);
 
       const user = await User.findOneAndUpdate(
         { _id: updatedPayment.userId },
