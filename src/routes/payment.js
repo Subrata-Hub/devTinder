@@ -9,15 +9,20 @@ const User = require("../models/user");
 const paymentRouter = express.Router();
 
 async function generateAccessToken() {
-  const response = await axios({
-    url: process.env.PAYPAL_BASE_URL + "/v1/oauth2/token",
-    method: "post",
-    data: "grant_type=client_credentials",
-    auth: {
-      username: process.env.PAYPAL_CLIENT_ID,
-      password: process.env.PAYPAL_CLIENT_SECRET,
-    },
-  });
+  const auth = Buffer.from(
+    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
+  ).toString("base64");
+
+  const response = await axios.post(
+    `${process.env.PAYPAL_BASE_URL}/v1/oauth2/token`,
+    "grant_type=client_credentials",
+    {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
 
   return response.data.access_token;
 }
@@ -206,10 +211,13 @@ paymentRouter.post("/payment/capture", userauth, async (req, res) => {
 
 paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
   try {
-    console.log("Received webhook:", webhookEvent.event_type);
+    console.log("--- Webhook Received ---");
+    const webhookEvent = req.body;
+    console.log("Webhook event type:", webhookEvent.event_type);
+
     const accessToken = await generateAccessToken();
     const verifyResponse = await axios.post(
-      "https://api.paypal.com/v1/notifications/verify-webhook-signature",
+      `${process.env.PAYPAL_BASE_URL}/v1/notifications/verify-webhook-signature`,
       {
         transmission_id: req.headers["paypal-transmission-id"],
         transmission_time: req.headers["paypal-transmission-time"],
@@ -231,53 +239,76 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
       return res.sendStatus(400);
     }
 
-    const webhookEvent = req.body;
-    console.log("Received webhook:", webhookEvent.event_type);
-
     const resource = webhookEvent.resource;
 
-    if (webhookEvent.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-      // const orderId =
-      // resource.supplementary_data?.related_resources[0]?.order?.id ||
-      // resource.custom_id; // Get order ID
+    if (!resource) {
+      console.warn(
+        "WARNING: Webhook event received without a 'resource' object."
+      );
+      return res.sendStatus(400); // Bad request if resource is missing
+    }
 
-      const orderId = resource.supplementary_data?.related_ids?.order_id;
-      const status = resource.status; // e.g., "COMPLETED"
-      const amount = resource.amount.value;
-      const currency = resource.amount.currency_code;
-      const payerEmail = resource.payer?.email_address;
-      const payerId = resource.payer?.payer_id;
+    if (webhookEvent.event_type === "PAYMENT.CAPTURE.COMPLETED") {
+      const orderId =
+        resource.supplementary_data?.related_ids?.order_id || resource.id;
+
+      if (!orderId) {
+        console.error(
+          "ERROR: Could not extract orderId from PAYMENT.CAPTURE.COMPLETED webhook resource."
+        );
+        return res.sendStatus(400); // Bad request if orderId is missing
+      }
+
+      const status = resource.status;
 
       const updatedPayment = await Payment.findOneAndUpdate(
         { orderId: orderId }, // Assuming orderId is stored in your Payment model
         {
           status: status,
-
-          // You might want to store more details from 'resource'
-          // e.g., resource: webhookEvent.resource
         },
         { new: true, upsert: false } // new: true returns the updated document
       );
 
       console.log(updatedPayment);
 
-      const user = await User.findOneAndUpdate(
-        { _id: updatedPayment.userId },
-        { isPremium: true, membershipType: updatedPayment.membershipType },
-        { new: true, upsert: false }
-      );
+      if (updatedPayment) {
+        const user = await User.findOneAndUpdate(
+          { _id: updatedPayment.userId },
+          { isPremium: true, membershipType: updatedPayment.membershipType },
+          { new: true, upsert: false }
+        );
+      }
+
+      console.log("--- Webhook processing complete. Sending 200 OK. ---");
+
+      res.sendStatus(200);
     }
 
     if (webhookEvent.event_type === "PAYMENT.CAPTURE.DECLINED") {
+      const orderId =
+        resource.supplementary_data?.related_ids?.order_id || resource.id;
+
+      try {
+        await Payment.findOneAndUpdate(
+          { orderId: orderId },
+          { status: "DECLINED" },
+          { new: true, upsert: false }
+        );
+      } catch (dbError) {
+        console.error(
+          "ERROR: Database update failed for PAYMENT.CAPTURE.DECLINED:",
+          dbError.message
+        );
+        console.error("DB Error details:", dbError);
+        return res
+          .status(500)
+          .json({ msg: "Database update failed for capture declined" });
+      }
+
+      return res
+        .status(500)
+        .json({ msg: "Database update failed for capture declined" });
     }
-
-    // PAYMENT.CAPTURE.COMPLETED
-    // PAYMENT.CAPTURE.DECLINED
-    // CHECKOUT.ORDER.APPROVED
-    // PAYMENT.ORDER.CANCELLED
-    // CHECKOUT.ORDER.APPROVED
-
-    res.sendStatus(200);
   } catch (error) {
     return res.status(500).json({ msg: error.message });
   }
