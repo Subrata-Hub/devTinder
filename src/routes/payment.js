@@ -314,9 +314,10 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
   }
 });
 
-paymentRouter.get("primium/verify", userauth, async (req, res) => {
+paymentRouter.get("/primium/verify", userauth, async (req, res) => {
   const user = req.user;
-  if (user.isPremium) {
+  if (user && user.isPremium) {
+    console.log(user);
     return res.json({ isPremium: true });
   }
 
