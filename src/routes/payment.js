@@ -190,16 +190,16 @@ paymentRouter.post("/payment/capture", userauth, async (req, res) => {
       },
     });
 
-    // const captureData = captureResponse.data;
+    const captureData = captureResponse.data;
 
     // // Example: Extract details for DB
-    // const orderDetails = {
-    //   paypalOrderId: captureData.id,
-    //   status: captureData.status,
-    //   payer: captureData.payer,
-    //   purchase_units: captureData.purchase_units,
-    // };
 
+    const payment = await Payment.findOne({ orderId: captureData.id });
+
+    payment.payment_source = captureData.payment_source;
+    payment.payer = captureData.payer;
+
+    await payment.save();
     // console.log(captureData);
 
     res.status(200).send(captureResponse?.data);
@@ -312,6 +312,15 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
   } catch (error) {
     return res.status(500).json({ msg: error.message });
   }
+});
+
+paymentRouter.get("primium/verify", userauth, async (req, res) => {
+  const user = req.user;
+  if (user.isPremium) {
+    return res.json({ isPremium: true });
+  }
+
+  return res.json({ isPremium: false });
 });
 
 module.exports = paymentRouter;
