@@ -34,12 +34,6 @@ paymentRouter.post("/payment/create", userauth, async (req, res) => {
     if (!user || !membershipType) return;
     const accessToken = await generateAccessToken();
 
-    console.log(accessToken);
-
-    console.log(membershipAmound[membershipType]);
-
-    // const { firstName, lastName, emailId, phoneNumber, location } = user;
-
     const response = await axios({
       url: process.env.PAYPAL_BASE_URL + "/v2/checkout/orders",
       method: "post",
@@ -48,43 +42,6 @@ paymentRouter.post("/payment/create", userauth, async (req, res) => {
         Authorization: "Bearer " + accessToken,
         prefer: "return=representation",
       },
-      // data: JSON.stringify({
-      //   intent: "CAPTURE",
-      //   purchase_units: [
-      //     {
-      //       items: [
-      //         {
-      //           name: "Node.js Complete Course",
-      //           description: "Node.js Complete Course with Express and MongoDB",
-      //           quantity: 1,
-      //           unit_amount: {
-      //             currency_code: "USD",
-      //             value: "100.00",
-      //           },
-      //         },
-      //       ],
-
-      //       amount: {
-      //         currency_code: "USD",
-      //         value: "100",
-      //         breakdown: {
-      //           item_total: {
-      //             currency_code: "USD",
-      //             value: "100",
-      //           },
-      //         },
-      //       },
-      //     },
-      //   ],
-
-      //   application_context: {
-      //     return_url: process.env.BASE_URL + "/payment/complete-order",
-      //     cancel_url: process.env.BASE_URL + "/payment/cancel-order",
-      //     shipping_preference: "NO_SHIPPING",
-      //     user_action: "PAY_NOW",
-      //     brand_name: "tinderVibe",
-      //   },
-      // }),
 
       data: {
         intent: "CAPTURE",
@@ -115,31 +72,6 @@ paymentRouter.post("/payment/create", userauth, async (req, res) => {
           },
         ],
 
-        // payer: {
-        //   email_address: emailId,
-
-        //   name: {
-        //     given_name: firstName,
-        //     surname: lastName,
-        //   },
-        //   phone: {
-        //     phone_number: {
-        //       national_number: phoneNumber.replace(/\D/g, ""),
-        //     },
-        //   },
-
-        //   address: {
-        //     country_code: "IN",
-        //   },
-        // },
-
-        // application_context: {
-        //   return_url: process.env.BASE_URL + "/payment/complete-order",
-        //   cancel_url: process.env.BASE_URL + "/payment/cancel-order",
-        //   shipping_preference: "NO_SHIPPING",
-        //   user_action: "PAY_NOW",
-        //   brand_name: "tinderVibe",
-        // },
         membershipType: membershipType,
       },
     });
@@ -158,12 +90,6 @@ paymentRouter.post("/payment/create", userauth, async (req, res) => {
     });
 
     const savedPayment = await payment.save();
-
-    // const redirectUrl = savedPayment.links.find(
-    //   (link) => link.rel === "approve"
-    // ).href;
-
-    // res.redirect(redirectUrl);
 
     res.status(201).send({ savedPayment });
   } catch (error) {
@@ -316,12 +242,39 @@ paymentRouter.post("/payment/webhook", express.json(), async (req, res) => {
 
 paymentRouter.get("/primium/verify", userauth, async (req, res) => {
   const user = req.user;
-  if (user && user.isPremium) {
-    console.log(user);
-    return res.json({ isPremium: true });
+
+  if (user.isPremium) {
+    return res.json(user);
   }
 
-  return res.json({ isPremium: false });
+  return res.json(user);
 });
+
+paymentRouter.post(
+  "/payment-successfull/detail",
+  userauth,
+  async (req, res) => {
+    try {
+      const user = req.user;
+      const orderId = req.body.orderId;
+
+      if (!user) {
+        res.status(401).send("you are not logedIn");
+      }
+
+      const payment = await Payment.findOne({ orderId: orderId });
+
+      const paymentDetails = {
+        membershipType: payment.membershipType,
+        amount: payment.purchase_units[0].amount.value,
+        currency_code: payment.purchase_units[0].amount.currency_code,
+      };
+
+      res.status(200).send(paymentDetails);
+    } catch (error) {
+      return res.status(500).json({ msg: error.message });
+    }
+  }
+);
 
 module.exports = paymentRouter;
