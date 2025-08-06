@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 
+const http = require("http");
+
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
 
@@ -9,6 +11,9 @@ const profileRouter = require("./routes/profile");
 const requestRouter = require("./routes/request");
 const userRouter = require("./routes/user");
 const paymentRouter = require("./routes/payment");
+const chatRouter = require("./routes/chat");
+
+const initializeSocket = require("./utils/socket");
 
 require("dotenv").config();
 
@@ -30,15 +35,20 @@ app.use("/", profileRouter);
 app.use("/", requestRouter);
 app.use("/", userRouter);
 app.use("/", paymentRouter);
+app.use("/", chatRouter);
 
 // express.json() is a middleware it convert json in request body to the javascripts object
 
 // cookie parder middleware
 
+const server = http.createServer(app);
+
+initializeSocket(server);
+
 connectDB()
   .then(() => {
     console.log("Database connections Successfull");
-    app.listen(process.env.PORT, () => {
+    server.listen(process.env.PORT, () => {
       console.log("Server is running on port 3000");
     });
   })
